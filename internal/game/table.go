@@ -29,11 +29,6 @@ func (n *Node) Symbol() string {
 	return n.token.Symbol()
 }
 
-const (
-	ColumnsTotal = 6
-	RowsTotal    = 7
-)
-
 func (n Nodes) IsAvailable() bool { return n[0].IsEmpty() }
 
 func (n Nodes) AddToken(token *Token) error {
@@ -220,7 +215,7 @@ func (t *Table) HasAvailableColumns() bool { return len(t.AvailableColumns()) > 
 
 func (t *Table) Column(i int) (Nodes, error) {
 	if i < 0 || i >= len(t.columns) {
-		return nil, fmt.Errorf("column index must be between 0 and %d", ColumnsTotal-1)
+		return nil, fmt.Errorf("column index must be between 0 and %d", len(t.columns)-1)
 	}
 
 	return t.columns[i], nil
