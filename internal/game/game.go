@@ -5,92 +5,118 @@ import (
 	"fmt"
 )
 
-type Game struct {
-	players []Player
-	queue   *PlayerQueue
-}
-
+// PlayerQueue is a queue for the players that are playing the game
 type PlayerQueue struct {
-	sequence *ring.Ring
+	*ring.Ring
 }
 
-func NewPlayerQueue(players ...Player) *PlayerQueue {
-	var queue PlayerQueue
+// NewPlayerQueue creates a new PlayerQueue
+func NewPlayerQueue(players []Player) *PlayerQueue {
+	queue := PlayerQueue{
+		Ring: ring.New(len(players)),
+	}
 
-	for i, player := range players {
-		node := &ring.Ring{
-			Value: player,
-		}
-
-		if i == 0 {
-			queue.sequence = node
-			continue
-		}
-
-		queue.sequence = queue.sequence.Link(node)
+	for _, player := range players {
+		queue.Value = player
+		queue.Ring = queue.Next()
 	}
 
 	return &queue
 }
 
 func (q *PlayerQueue) NextPlayer() Player {
-	current := q.sequence.Value.(Player)
-	q.sequence = q.sequence.Next()
+	current := q.Value.(Player)
+	q.Ring = q.Next()
 	return current
 }
 
-func New(players ...Player) *Game {
-	return &Game{
-		players: players,
-		queue:   NewPlayerQueue(players...),
-	}
-}
-
-func (g *Game) Run() error {
+func Run() {
 	for {
 		var option int
-		fmt.Printf("# Main menu:\n1: start match\n2: exit game\n\n")
+		fmt.Printf("# Main menu:\n1: start match\n0: exit game\n\n")
 		fmt.Printf("Select an option: ")
 		fmt.Scanf("%d", &option)
 		fmt.Println()
 		switch option {
 		case 1:
-			if err := g.Start(7, 6); err != nil {
-				return err
-			}
-		case 2:
-			return nil
+			NewMatch(
+				[]Player{
+					NewPlayer("Player 1", Red),
+					NewPlayer("Player 2", Blue),
+				},
+				NewTable(7, 6),
+			).Start()
+		case 0:
+			return
+		default:
+			fmt.Printf("Failed to select option: %d is not a valid option\n", option)
 		}
 	}
 }
 
-func (g *Game) Start(columns, rows int) error {
-	table := NewTable(columns, rows)
+type Match struct {
+	players      []Player
+	playerQueue  *PlayerQueue
+	table        *Table
+	columnsTotal int
+}
 
-	for table.HasAvailableColumns() {
-		player := g.queue.NextPlayer()
+func NewMatch(players []Player, table *Table) *Match {
+	return &Match{
+		players:      players,
+		playerQueue:  NewPlayerQueue(players),
+		table:        table,
+		columnsTotal: len(table.Columns()),
+	}
+}
 
+func (m *Match) Start() {
+	fmt.Printf("Match started!\n\n")
+
+	for {
+		player := m.playerQueue.NextPlayer()
 		fmt.Printf("%s, it is your turn!\n\n", player.Name())
-		table.Print()
-		fmt.Println()
+		m.table.Print()
+
 		for {
 			var column int
-			fmt.Printf("Select a column [0-%d]: ", columns-1)
+			fmt.Printf("Select a column [1-%d]: ", m.columnsTotal)
 			fmt.Scanf("%d", &column)
 			fmt.Println()
-			if err := player.DropToken(table, column); err != nil {
-				fmt.Printf("Failed to drop token: %v\n", err)
+			if column < 1 || column > m.columnsTotal {
+				fmt.Printf("Cannot select column: column %d is out of range\n\n", column)
+				continue
 			}
+
+			c, err := m.table.Column(column - 1)
+			if err != nil {
+				fmt.Printf("Failed to select column: %v\n\n", err)
+				continue
+			}
+
+			if !c.IsAvailable() {
+				fmt.Printf("Cannot select column: column %d has no spaces left\n\n", column)
+				continue
+			}
+
+			if err := player.DropToken(m.table, column-1); err != nil {
+				fmt.Printf("Failed to drop token: %v\n\n", err)
+				continue
+			}
+
 			break
 		}
 
-		if table.HasWinningSequence() {
+		if m.table.HasWinningSequence() {
 			fmt.Printf("%s has own the game!\n\n", player.Name())
-			table.Print()
-			fmt.Println()
+			m.table.Print()
+			break
+		}
+
+		if !m.table.HasAvailableColumns() {
+			fmt.Printf("The game has ended with a draw!\n\n")
+			m.table.Print()
 			break
 		}
 	}
-
-	return nil
 }
