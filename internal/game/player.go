@@ -5,8 +5,8 @@ type Player struct {
 	tokenFactory *TokenFactory
 }
 
-func NewPlayer(name string, symbol string) Player {
-	return Player{name: name, tokenFactory: NewTokenFactory(symbol)}
+func NewPlayer(name string, color *Color) Player {
+	return Player{name: name, tokenFactory: NewTokenFactory(color)}
 }
 
 func (p *Player) Name() string { return p.name }

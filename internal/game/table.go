@@ -12,28 +12,28 @@ type Node struct {
 
 func (n *Node) IsEmpty() bool { return n.token == nil }
 
-func (n *Node) SetToken(token *Token) error {
+func (n *Node) SetToken(token Token) error {
 	if !n.IsEmpty() {
 		return fmt.Errorf("cannot set token: node not empty")
 	}
 
-	n.token = token
+	n.token = &token
 	return nil
 }
 
-func (n *Node) Symbol() string {
+func (n *Node) Color() *Color {
 	if n.IsEmpty() {
-		return "X"
+		return Blank
 	}
 
-	return n.token.Symbol()
+	return n.token.Color()
 }
 
 func (n Nodes) IsAvailable() bool { return n[0].IsEmpty() }
 
-func (n Nodes) AddToken(token *Token) error {
+func (n Nodes) AddToken(token Token) error {
 	if n.IsAvailable() {
-		for i := len(n) - 1; i > 0; i-- {
+		for i := len(n) - 1; i >= 0; i-- {
 			if n[i].IsEmpty() {
 				return n[i].SetToken(token)
 			}
@@ -45,19 +45,20 @@ func (n Nodes) AddToken(token *Token) error {
 
 func (n Nodes) HasWinningSequence() bool {
 	var (
-		color string
+		color *Color
 		score int
 	)
 
 	for _, node := range n {
 		if node.IsEmpty() {
+			score = 0
 			continue
 		}
 
-		if score > 0 && color == node.token.Symbol() {
+		if score > 0 && color == node.token.Color() {
 			score++
 		} else {
-			color = node.token.Symbol()
+			color = node.token.Color()
 			score = 1
 		}
 
@@ -180,19 +181,21 @@ func NewTable(columns, rows int) *Table {
 }
 
 func (n Nodes) Print() {
-	symbols := make([]string, 0, len(n))
+	tokens := make([]string, 0, len(n))
 
 	for _, node := range n {
-		symbols = append(symbols, node.Symbol())
+		tokens = append(tokens, node.Color().Paint("O"))
 	}
 
-	fmt.Println(strings.Join(symbols, " | "))
+	fmt.Println(strings.Join(tokens, Blank.Paint(" | ")))
 }
 
 func (t *Table) Print() {
 	for _, row := range t.Rows() {
 		row.Print()
 	}
+
+	fmt.Println()
 }
 
 func (t *Table) Columns() Matrix      { return t.columns }
@@ -221,7 +224,7 @@ func (t *Table) Column(i int) (Nodes, error) {
 	return t.columns[i], nil
 }
 
-func (t *Table) AddToken(token *Token, c int) error {
+func (t *Table) AddToken(token Token, c int) error {
 	column, err := t.Column(c)
 	if err != nil {
 		return err
