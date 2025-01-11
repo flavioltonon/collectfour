@@ -1,8 +1,6 @@
 package main
 
-import (
-	"collectfour/internal/game"
-)
+import "collectfour/internal/game"
 
 func main() {
 	game.Run()
